@@ -1,83 +1,88 @@
 // src/lib/conversationRepo.ts
-import { promises as fs } from "fs";
-import path from "path";
-import crypto from "crypto";
+import { put, list, head } from "@vercel/blob";
 
 export type Conversation = {
   id: string;
   title: string;
   summary: string;
   taggedText: string;
+  category?: string | null;
   created_at: string; // ISO
-  category?: string; // ✅ 追加（未分類は undefined）
 };
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const DATA_FILE = path.join(DATA_DIR, "conversations.json");
+const PREFIX = "conversations/";
 
-async function ensureDataFile() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  try {
-    await fs.access(DATA_FILE);
-  } catch {
-    await fs.writeFile(DATA_FILE, "[]\n", "utf8"); // 末尾改行つき
-  }
+// Vercel Blob を使えるか（ローカルでも token があれば使える）
+const hasBlob = !!process.env.BLOB_READ_WRITE_TOKEN;
+
+// 既存のID形式に合わせる（例: c-xxxx）
+function newId() {
+  return `c-${Math.random().toString(16).slice(2, 10)}`;
 }
 
-async function readAll(): Promise<Conversation[]> {
-  await ensureDataFile();
-  const raw = await fs.readFile(DATA_FILE, "utf8");
-  const parsed = JSON.parse(raw) as Conversation[];
-
-  // ✅ 後方互換：古いデータ（categoryなし）でもOK
-  const normalized = parsed.map((c) => ({
-    ...c,
-    category: c.category && c.category !== "全て" ? c.category : undefined,
-  }));
-
-  return normalized.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-}
-
-async function writeAll(conversations: Conversation[]) {
-  await ensureDataFile();
-  await fs.writeFile(DATA_FILE, JSON.stringify(conversations, null, 2) + "\n", "utf8");
+function keyOf(id: string) {
+  return `${PREFIX}${id}.json`;
 }
 
 export async function listConversations(): Promise<Conversation[]> {
-  return readAll();
+  if (!hasBlob) {
+    // ここに「ローカル用の旧JSON実装」を残したいなら残してOK
+    // ただしVercel本番では必ず hasBlob = true にする
+    return [];
+  }
+
+  const { blobs } = await list({ prefix: PREFIX });
+
+  const items: Conversation[] = [];
+  for (const b of blobs) {
+    const res = await fetch(b.url, { cache: "no-store" });
+    if (!res.ok) continue;
+    const json = (await res.json()) as Conversation;
+    items.push(json);
+  }
+
+  // 新しい順
+  items.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  return items;
 }
 
-export async function getConversationById(id: string): Promise<Conversation | undefined> {
-  const all = await readAll();
-  return all.find((c) => c.id === id);
+export async function getConversationById(id: string): Promise<Conversation | null> {
+  if (!hasBlob) return null;
+
+  // 存在確認（なくても fetch でも良いが、エラー分岐が綺麗）
+  const h = await head(keyOf(id)).catch(() => null);
+  if (!h) return null;
+
+  const res = await fetch(h.url, { cache: "no-store" });
+  if (!res.ok) return null;
+  return (await res.json()) as Conversation;
 }
 
 export async function createConversation(input: {
   title: string;
   summary: string;
   taggedText: string;
-  category?: string; // ✅ 追加
-}): Promise<Conversation> {
-  const title = input.title.trim();
-  const summary = input.summary.trim();
-  const taggedText = input.taggedText.trim();
-  const categoryRaw = String(input.category ?? "").trim();
+  category?: string;
+}) {
+  if (!hasBlob) {
+    throw new Error("BLOB_READ_WRITE_TOKEN が未設定です（VercelのStorage/Blobを作成して環境変数を追加してください）");
+  }
 
-  if (!title) throw new Error("タイトルが空です");
-  if (!summary) throw new Error("概要が空です");
-  if (!taggedText) throw new Error("本文（タグ付き）が空です");
+  const now = new Date().toISOString();
+  const conv: Conversation = {
+    id: newId(),
+    title: input.title,
+    summary: input.summary,
+    taggedText: input.taggedText,
+    category: input.category ?? "全て",
+    created_at: now,
+  };
 
-  // ✅ 「全て」 or 空は未分類扱い（= category undefined）
-  const category = categoryRaw && categoryRaw !== "全て" ? categoryRaw : undefined;
+  await put(keyOf(conv.id), JSON.stringify(conv, null, 2), {
+    access: "public", // 会話詳細を誰でも見れる仕様なら public でOK
+    contentType: "application/json",
+    addRandomSuffix: false,
+  });
 
-  const id = `c-${crypto.randomUUID().slice(0, 8)}`;
-  const created_at = new Date().toISOString();
-
-  const newConv: Conversation = { id, title, summary, taggedText, created_at, category };
-
-  const all = await readAll();
-  all.unshift(newConv);
-  await writeAll(all);
-
-  return newConv;
+  return conv;
 }
