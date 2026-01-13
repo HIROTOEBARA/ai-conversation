@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { listConversations } from "@/lib/conversationRepo";
 import { createConversationAction } from "./actions";
-import { adminLogout } from "@/lib/adminAuth";
+import { adminLogout, requireAdmin } from "@/lib/adminAuth";
 import { redirect } from "next/navigation";
 import { AdminComposeBox } from "./ui/AdminComposeBox";
 
@@ -19,6 +19,10 @@ type Props = {
 const CATEGORIES = ["全て", "生活", "経済", "ビジネス"] as const;
 
 export default async function AdminPage({ searchParams }: Props) {
+  // ✅ ログイン必須（未ログインなら /admin/login へ）
+  const ok = await requireAdmin();
+  if (!ok) redirect("/admin/login");
+
   const conversations = await listConversations();
 
   async function logout() {
@@ -112,14 +116,13 @@ export default async function AdminPage({ searchParams }: Props) {
 
         {conversations.map((c) => {
           const cat = c.category ?? "全て";
-          // 任意：詳細→一覧戻りでカテゴリを保持したいなら query を付ける
           const href = `/conversations/${c.id}?category=${encodeURIComponent(cat)}`;
 
           return (
             <Link
               key={c.id}
               href={href}
-              scroll={false} // ✅ これが重要：Nextの自動スクロール(top戻し)を止める
+              scroll={false} // ✅ Nextの自動スクロール(top戻し)を止める
               className="block rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10"
             >
               <div className="flex items-center justify-between gap-3">
@@ -130,6 +133,7 @@ export default async function AdminPage({ searchParams }: Props) {
                   {cat}
                 </span>
               </div>
+
               <div className="mt-1 text-base font-semibold text-white">{c.title}</div>
               <div className="text-sm text-white/80">{c.summary}</div>
             </Link>
