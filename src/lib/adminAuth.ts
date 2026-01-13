@@ -1,31 +1,43 @@
-"use server";
-
+// src/lib/adminAuth.ts
+import "server-only";
 import { cookies } from "next/headers";
 
-const COOKIE_NAME = "admin_session";
+const COOKIE_NAME = "admin";
 
-export async function adminLogin(formData: FormData) {
-  const password = String(formData.get("password") ?? "");
-  const expected = process.env.ADMIN_PASSWORD ?? "";
-
-  if (!expected) {
-    return { ok: false as const, error: "サーバー設定エラー：ADMIN_PASSWORD が未設定です" };
-  }
-  if (password !== expected) {
-    return { ok: false as const, error: "パスワードが違います" };
-  }
-
-  cookies().set(COOKIE_NAME, "1", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-  });
-
-  return { ok: true as const };
+// ✅ 互換: 既存の import が adminLogin/adminLogout でも動くように残す
+export async function adminLogin() {
+  await setAdminSession();
 }
 
 export async function adminLogout() {
-  cookies().delete(COOKIE_NAME);
-  return { ok: true as const };
+  await clearAdminSession();
+}
+
+// ✅ セッション付与
+export async function setAdminSession() {
+  const cookieStore = await cookies(); // ★ここがポイント（await）
+  cookieStore.set(COOKIE_NAME, "1", {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+}
+
+// ✅ セッション削除
+export async function clearAdminSession() {
+  const cookieStore = await cookies(); // ★ここも
+  cookieStore.set(COOKIE_NAME, "", {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 0,
+  });
+}
+
+// ✅ 認証状態
+export async function isAdminAuthed() {
+  const cookieStore = await cookies(); // ★ここも
+  return cookieStore.get(COOKIE_NAME)?.value === "1";
 }

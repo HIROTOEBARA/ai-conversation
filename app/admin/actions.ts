@@ -4,21 +4,26 @@
 import { createConversation } from "@/lib/conversationRepo";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { isAdminAuthed } from "@/lib/adminAuth";
 
 export async function createConversationAction(formData: FormData) {
+  // ✅ 管理者チェック
+  const authed = await isAdminAuthed();
+  if (!authed) {
+    redirect("/admin/login");
+  }
+
   const title = String(formData.get("title") ?? "");
   const summary = String(formData.get("summary") ?? "");
   const taggedText = String(formData.get("taggedText") ?? "");
-  const category = String(formData.get("category") ?? "全て"); // ✅ 追加
+  const category = String(formData.get("category") ?? "全て");
 
   try {
     await createConversation({ title, summary, taggedText, category });
 
-    // 一覧も更新したいので revalidate（保険）
     revalidatePath("/admin");
     revalidatePath("/conversations");
 
-    // ✅ 管理画面に戻す（UX）
     redirect("/admin?created=1");
   } catch (e) {
     const msg = e instanceof Error ? e.message : "作成に失敗しました";
