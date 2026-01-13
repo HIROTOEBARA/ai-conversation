@@ -4,14 +4,12 @@
 import { createConversation } from "@/lib/conversationRepo";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { isAdminAuthed } from "@/lib/adminAuth";
+import { requireAdmin } from "@/lib/adminAuth";
 
 export async function createConversationAction(formData: FormData) {
   // ✅ 管理者チェック
-  const authed = await isAdminAuthed();
-  if (!authed) {
-    redirect("/admin/login");
-  }
+  const ok = await requireAdmin();
+  if (!ok) redirect("/admin/login?error=unauthorized");
 
   const title = String(formData.get("title") ?? "");
   const summary = String(formData.get("summary") ?? "");
