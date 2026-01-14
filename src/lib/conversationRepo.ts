@@ -1,5 +1,5 @@
 // src/lib/conversationRepo.ts
-import { put, list, head } from "@vercel/blob";
+import { put, list, head, del } from "@vercel/blob";
 
 export type Conversation = {
   id: string;
@@ -26,8 +26,7 @@ function keyOf(id: string) {
 
 export async function listConversations(): Promise<Conversation[]> {
   if (!hasBlob) {
-    // ここに「ローカル用の旧JSON実装」を残したいなら残してOK
-    // ただしVercel本番では必ず hasBlob = true にする
+    // ローカルで token 無しなら空（必要なら旧JSON実装に差し替えてOK）
     return [];
   }
 
@@ -65,7 +64,9 @@ export async function createConversation(input: {
   category?: string;
 }) {
   if (!hasBlob) {
-    throw new Error("BLOB_READ_WRITE_TOKEN が未設定です（VercelのStorage/Blobを作成して環境変数を追加してください）");
+    throw new Error(
+      "BLOB_READ_WRITE_TOKEN が未設定です（VercelのStorage/Blobを作成して環境変数を追加してください）"
+    );
   }
 
   const now = new Date().toISOString();
@@ -79,10 +80,30 @@ export async function createConversation(input: {
   };
 
   await put(keyOf(conv.id), JSON.stringify(conv, null, 2), {
-    access: "public", // 会話詳細を誰でも見れる仕様なら public でOK
+    access: "public", // 公開側が誰でも閲覧OKなら public でOK
     contentType: "application/json",
     addRandomSuffix: false,
   });
 
   return conv;
+}
+
+/**
+ * ✅ 管理者削除用：Blob上の conversation/{id}.json を削除
+ */
+export async function deleteConversation(id: string) {
+  if (!hasBlob) {
+    throw new Error(
+      "BLOB_READ_WRITE_TOKEN が未設定です（VercelのStorage/Blobを作成して環境変数を追加してください）"
+    );
+  }
+
+  // 存在しなくても del が通る場合がありますが、挙動を安定させたいなら head を挟む
+  const h = await head(keyOf(id)).catch(() => null);
+  if (!h) {
+    // 既に消えている/存在しない → 404扱いにしてもいいが、管理画面では「何もしない」でもOK
+    return;
+  }
+
+  await del(keyOf(id));
 }

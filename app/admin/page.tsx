@@ -1,7 +1,7 @@
 // app/admin/page.tsx
 import Link from "next/link";
 import { listConversations } from "@/lib/conversationRepo";
-import { createConversationAction } from "./actions";
+import { createConversationAction, deleteConversationAction } from "./actions";
 import { adminLogout, requireAdmin } from "@/lib/adminAuth";
 import { redirect } from "next/navigation";
 import { AdminComposeBox } from "./ui/AdminComposeBox";
@@ -11,13 +11,16 @@ export const dynamic = "force-dynamic";
 type Props = {
   searchParams?: Promise<{
     created?: string;
+    deleted?: string;
     error?: string;
   }>;
 };
 
+// 固定カテゴリ（増やすならここ）
 const CATEGORIES = ["全て", "生活", "経済", "ビジネス"] as const;
 
 export default async function AdminPage({ searchParams }: Props) {
+  // ✅ ログイン必須（未ログインなら /admin/login へ）
   const ok = await requireAdmin();
   if (!ok) redirect("/admin/login");
 
@@ -31,6 +34,7 @@ export default async function AdminPage({ searchParams }: Props) {
 
   const sp = (await searchParams) ?? {};
   const created = sp.created === "1";
+  const deleted = sp.deleted === "1";
   const error = sp.error ? decodeURIComponent(sp.error) : null;
 
   return (
@@ -65,16 +69,25 @@ export default async function AdminPage({ searchParams }: Props) {
           保存しました（一覧を更新しました）
         </div>
       )}
+
+      {deleted && (
+        <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+          削除しました（一覧を更新しました）
+        </div>
+      )}
+
       {error && (
         <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {error}
         </div>
       )}
 
+      {/* ✅ 新規作成 */}
       <section className="mb-10 rounded-lg border border-white/10 bg-white/5 p-4">
         <h2 className="mb-3 text-lg font-semibold text-white">新規作成</h2>
 
         <form action={createConversationAction} className="space-y-4">
+          {/* ✅ 分類 */}
           <label className="block text-sm text-white/80">
             分類
             <select
@@ -104,6 +117,7 @@ export default async function AdminPage({ searchParams }: Props) {
             required
           />
 
+          {/* ✅ 生ログ→タグ整形→追記反映のUI */}
           <AdminComposeBox />
 
           <button
@@ -115,6 +129,7 @@ export default async function AdminPage({ searchParams }: Props) {
         </form>
       </section>
 
+      {/* ✅ 保存済み（削除ボタン付き） */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-white">保存済み</h2>
 
@@ -123,24 +138,40 @@ export default async function AdminPage({ searchParams }: Props) {
           const href = `/conversations/${c.id}?category=${encodeURIComponent(cat)}`;
 
           return (
-            <Link
+            <div
               key={c.id}
-              href={href}
-              scroll={false}
-              className="block rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10"
+              className="flex items-stretch justify-between gap-3 rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10"
             >
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-xs text-white/70">
-                  {new Date(c.created_at).toLocaleString("ja-JP")}
+              {/* 左：詳細へ（今まで通り） */}
+              <Link href={href} scroll={false} className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-xs text-white/70">
+                    {new Date(c.created_at).toLocaleString("ja-JP")}
+                  </div>
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-xs text-white/80">
+                    {cat}
+                  </span>
                 </div>
-                <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-xs text-white/80">
-                  {cat}
-                </span>
-              </div>
 
-              <div className="mt-1 text-base font-semibold text-white">{c.title}</div>
-              <div className="text-sm text-white/80">{c.summary}</div>
-            </Link>
+                <div className="mt-1 text-base font-semibold text-white">{c.title}</div>
+                <div className="text-sm text-white/80">{c.summary}</div>
+              </Link>
+
+              {/* 右：削除（Linkの外に出して誤爆防止） */}
+              <form action={deleteConversationAction} className="flex items-center">
+                <input type="hidden" name="id" value={c.id} />
+                <button
+                  type="submit"
+                  className="rounded-md border border-red-400/30 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-200 hover:bg-red-500/30"
+                  onClick={(e) => {
+                    // クライアント側confirm（最短・軽量）
+                    if (!confirm("この投稿を削除します。よろしいですか？")) e.preventDefault();
+                  }}
+                >
+                  削除
+                </button>
+              </form>
+            </div>
           );
         })}
       </section>
