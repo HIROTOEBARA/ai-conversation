@@ -5,6 +5,7 @@ import { createConversationAction, deleteConversationAction } from "./actions";
 import { adminLogout, requireAdmin } from "@/lib/adminAuth";
 import { redirect } from "next/navigation";
 import { AdminComposeBox } from "./ui/AdminComposeBox";
+import { DeleteConversationButton } from "./ui/DeleteConversationButton";
 
 export const dynamic = "force-dynamic";
 
@@ -157,20 +158,8 @@ export default async function AdminPage({ searchParams }: Props) {
                 <div className="text-sm text-white/80">{c.summary}</div>
               </Link>
 
-              {/* 右：削除（Linkの外に出して誤爆防止） */}
-              <form action={deleteConversationAction} className="flex items-center">
-                <input type="hidden" name="id" value={c.id} />
-                <button
-                  type="submit"
-                  className="rounded-md border border-red-400/30 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-200 hover:bg-red-500/30"
-                  onClick={(e) => {
-                    // クライアント側confirm（最短・軽量）
-                    if (!confirm("この投稿を削除します。よろしいですか？")) e.preventDefault();
-                  }}
-                >
-                  削除
-                </button>
-              </form>
+              {/* 右：削除（confirm付き / Client側に隔離） */}
+              <DeleteConversationButton id={c.id} action={deleteConversationAction} />
             </div>
           );
         })}
