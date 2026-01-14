@@ -1,4 +1,5 @@
 // app/admin/login/page.tsx
+import Link from "next/link";
 import { adminLogin } from "@/lib/adminAuth";
 import { redirect } from "next/navigation";
 
@@ -19,6 +20,16 @@ export default async function AdminLoginPage({ searchParams }: Props) {
 
   return (
     <main className="mx-auto max-w-md px-4 py-12">
+      {/* ✅ 左上：トップへ */}
+      <div className="mb-6">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white hover:bg-white/10"
+        >
+          ← トップへ
+        </Link>
+      </div>
+
       <h1 className="mb-6 text-2xl font-bold text-white">管理者ログイン</h1>
 
       {error && (

@@ -15,11 +15,9 @@ type Props = {
   }>;
 };
 
-// 固定カテゴリ（増やすならここ）
 const CATEGORIES = ["全て", "生活", "経済", "ビジネス"] as const;
 
 export default async function AdminPage({ searchParams }: Props) {
-  // ✅ ログイン必須（未ログインなら /admin/login へ）
   const ok = await requireAdmin();
   if (!ok) redirect("/admin/login");
 
@@ -38,11 +36,21 @@ export default async function AdminPage({ searchParams }: Props) {
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
       <header className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="mb-2 text-2xl font-bold text-white">管理画面</h1>
-          <p className="text-sm text-white/80">
-            会話ログを貼り付けて保存します（公開側はログイン不要）。
-          </p>
+        <div className="space-y-3">
+          {/* ✅ 左上：トップへ */}
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white hover:bg-white/10"
+          >
+            ← トップへ
+          </Link>
+
+          <div>
+            <h1 className="mb-2 text-2xl font-bold text-white">管理画面</h1>
+            <p className="text-sm text-white/80">
+              会話ログを貼り付けて保存します（公開側はログイン不要）。
+            </p>
+          </div>
         </div>
 
         <form action={logout}>
@@ -63,12 +71,10 @@ export default async function AdminPage({ searchParams }: Props) {
         </div>
       )}
 
-      {/* ✅ 新規作成 */}
       <section className="mb-10 rounded-lg border border-white/10 bg-white/5 p-4">
         <h2 className="mb-3 text-lg font-semibold text-white">新規作成</h2>
 
         <form action={createConversationAction} className="space-y-4">
-          {/* ✅ 分類 */}
           <label className="block text-sm text-white/80">
             分類
             <select
@@ -98,7 +104,6 @@ export default async function AdminPage({ searchParams }: Props) {
             required
           />
 
-          {/* ✅ 生ログ→タグ整形→追記反映のUI */}
           <AdminComposeBox />
 
           <button
@@ -110,7 +115,6 @@ export default async function AdminPage({ searchParams }: Props) {
         </form>
       </section>
 
-      {/* ✅ 保存済み */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-white">保存済み</h2>
 
@@ -122,7 +126,7 @@ export default async function AdminPage({ searchParams }: Props) {
             <Link
               key={c.id}
               href={href}
-              scroll={false} // ✅ Nextの自動スクロール(top戻し)を止める
+              scroll={false}
               className="block rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10"
             >
               <div className="flex items-center justify-between gap-3">
