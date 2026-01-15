@@ -20,7 +20,9 @@ type Props = {
   messages?: any[];
 };
 
-const HEADER_H = 220;
+// ✅ 固定するのは「戻るボタン行」だけなので高さを小さく
+// (py-3 + ボタン高さ想定。合わなければ 56〜80 で微調整OK)
+const FIXED_BAR_H = 64;
 
 export default function ConversationDetailClient({
   id,
@@ -37,7 +39,6 @@ export default function ConversationDetailClient({
   // ✅ 復帰（Nextの自動scrollに負けないよう useLayoutEffect）
   useLayoutEffect(() => {
     try {
-      // ブラウザ標準の復元と競合しないようにする（保険）
       if ("scrollRestoration" in history) history.scrollRestoration = "manual";
     } catch {}
 
@@ -47,10 +48,7 @@ export default function ConversationDetailClient({
 
     const restore = () => window.scrollTo(0, target);
 
-    // まず即時
     restore();
-
-    // Next側の処理に上書きされることがあるので最後にもう一発（重要）
     const t = window.setTimeout(restore, 0);
 
     setReady(true);
@@ -77,16 +75,16 @@ export default function ConversationDetailClient({
 
   return (
     <main className="mx-auto max-w-3xl px-4">
-      {/* 固定ヘッダー（黒・不透明） */}
-      <header
+      {/* ✅ 固定バー：戻る行だけ */}
+      <div
         className="border-b border-white/10 bg-black"
         style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999 }}
       >
-        <div className="mx-auto max-w-3xl px-4 py-4">
-          <div className="mb-3 flex items-center justify-between">
+        <div className="mx-auto max-w-3xl px-4 py-3">
+          <div className="flex items-center justify-between">
             <Link
               href={backHref}
-              scroll={false} // ✅ 戻る時の自動スクロールも止める（保険）
+              scroll={false}
               onClick={() => {
                 sessionStorage.setItem(key, String(window.scrollY));
               }}
@@ -97,19 +95,22 @@ export default function ConversationDetailClient({
 
             <span className="text-xs text-white/70">{header.category ?? "全て"}</span>
           </div>
-
-          <p className="text-xs text-white/70">{header.formatted}</p>
-          <h1 className="text-2xl font-bold text-white">{header.title}</h1>
-          <p className="text-sm text-white/80">{header.summary}</p>
-
-          <div className="mt-3">
-            <CopyUrlButton />
-          </div>
         </div>
-      </header>
+      </div>
 
-      {/* ヘッダー分スペーサー */}
-      <div style={{ height: HEADER_H }} />
+      {/* ✅ 固定バー分のスペーサー */}
+      <div style={{ height: FIXED_BAR_H }} />
+
+      {/* ✅ ここからはスクロールするヘッダー情報（固定しない） */}
+      <section className="py-4">
+        <p className="text-xs text-white/70">{header.formatted}</p>
+        <h1 className="mt-1 text-2xl font-bold text-white">{header.title}</h1>
+        <p className="mt-1 text-sm text-white/80">{header.summary}</p>
+
+        <div className="mt-3">
+          <CopyUrlButton />
+        </div>
+      </section>
 
       {/* 本文 */}
       <div className={ready ? "opacity-100" : "opacity-0"}>
