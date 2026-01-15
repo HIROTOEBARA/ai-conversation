@@ -1,7 +1,7 @@
 // app/admin/page.tsx
 import Link from "next/link";
 import { listConversations } from "@/lib/conversationRepo";
-import { createConversationAction, deleteConversationAction } from "./actions";
+import { createConversationAction } from "./actions";
 import { adminLogout, requireAdmin } from "@/lib/adminAuth";
 import { redirect } from "next/navigation";
 import { AdminComposeBox } from "./ui/AdminComposeBox";
@@ -158,8 +158,8 @@ export default async function AdminPage({ searchParams }: Props) {
                 <div className="text-sm text-white/80">{c.summary}</div>
               </Link>
 
-              {/* 右：削除（confirm付き / Client側に隔離） */}
-              <DeleteConversationButton id={c.id} action={deleteConversationAction} />
+              {/* ✅ 右：削除（Server Actionは子コンポーネント内に持つ） */}
+              <DeleteConversationButton id={c.id} />
             </div>
           );
         })}

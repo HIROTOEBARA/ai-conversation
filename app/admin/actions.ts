@@ -35,6 +35,10 @@ export async function deleteConversationAction(formData: FormData) {
   if (!ok) redirect("/admin/login?error=unauthorized");
 
   const id = String(formData.get("id") ?? "").trim();
+
+  // ✅ ログ（切り分け用：終わったら消してOK）
+  console.log("[deleteConversationAction] id=", id);
+
   if (!id) redirect(`/admin?error=${encodeURIComponent("削除対象IDが不正です")}`);
 
   try {
@@ -45,6 +49,7 @@ export async function deleteConversationAction(formData: FormData) {
 
     redirect("/admin?deleted=1");
   } catch (e) {
+    console.error("[deleteConversationAction] error=", e);
     const msg = e instanceof Error ? e.message : "削除に失敗しました";
     redirect(`/admin?error=${encodeURIComponent(msg)}`);
   }
