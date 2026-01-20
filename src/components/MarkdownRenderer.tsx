@@ -1,6 +1,4 @@
 // src/components/MarkdownRenderer.tsx
-"use client";
-
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -15,6 +13,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+          // ===== 見出し系 =====
           h1: ({ children, ...props }) => (
             <h1 className="mt-2 mb-3 text-xl font-bold text-slate-900" {...props}>
               {children}
@@ -31,31 +30,31 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             </h3>
           ),
 
-          // ✅ 段落
+          // ===== 段落系 =====
           p: ({ children, ...props }) => (
-            <p className="my-2 text-slate-900 leading-relaxed" {...props}>
+            <p className="my-2 text-slate-900" {...props}>
               {children}
             </p>
           ),
 
-          // ✅ 箇条書き（入れ子も崩れにくく）
+          // ===== 箇条書き =====
           ul: ({ children, ...props }) => (
-            <ul className="my-2 list-disc pl-5 text-slate-900 space-y-1" {...props}>
+            <ul className="my-2 list-disc pl-5 text-slate-900" {...props}>
               {children}
             </ul>
           ),
           ol: ({ children, ...props }) => (
-            <ol className="my-2 list-decimal pl-5 text-slate-900 space-y-1" {...props}>
+            <ol className="my-2 list-decimal pl-5 text-slate-900" {...props}>
               {children}
             </ol>
           ),
           li: ({ children, ...props }) => (
-            <li className="text-slate-900 leading-relaxed" {...props}>
+            <li className="my-1 text-slate-900" {...props}>
               {children}
             </li>
           ),
 
-          // ✅ 引用（今回必須ではないが崩れ防止）
+          // ===== 引用 =====
           blockquote: ({ children, ...props }) => (
             <blockquote
               className="my-3 border-l-4 border-slate-300 bg-slate-50 px-3 py-2 text-slate-800"
@@ -65,11 +64,11 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             </blockquote>
           ),
 
-          // ✅ URL / リンク
+          // ===== リンク =====
           a: ({ children, href, ...props }) => (
             <a
               href={href}
-              className="text-sky-700 underline underline-offset-2 hover:text-sky-800 break-words"
+              className="text-sky-700 underline underline-offset-2 hover:text-sky-800"
               target="_blank"
               rel="noopener noreferrer"
               {...props}
@@ -78,55 +77,40 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             </a>
           ),
 
-          // ✅ コード：inline / block を "inline" フラグで判定（ここが重要）
-          pre: ({ children, ...props }) => (
-            <pre
-              className="my-3 overflow-x-auto rounded-lg bg-slate-100 p-3 text-[0.9em] text-slate-900"
-              {...props}
-            >
-              {children}
-            </pre>
-          ),
-          code: ({ inline, children, ...props }) => {
-            if (inline) {
+          // ===== コード =====
+          code: ({ children, className, ...props }) => {
+            const isBlock = /language-/.test(className || "");
+            if (!isBlock) {
+              // インラインコード
               return (
                 <code
-                  className="rounded bg-slate-100 px-1.5 py-0.5 text-[0.95em] text-slate-900"
+                  className="rounded bg-slate-100 px-1 py-0.5 text-[0.95em] text-slate-900"
                   {...props}
                 >
                   {children}
                 </code>
               );
             }
-            // block の場合は pre 側で見た目を持つので、code 自体は素でOK
-            return <code {...props}>{children}</code>;
-          },
 
-          // ✅ 表（ここが今回の最重要）
-          table: ({ children, ...props }) => (
-            <div className="my-3 overflow-x-auto">
-              <table className="w-full border-collapse text-sm" {...props}>
+            // ブロックコード
+            return (
+              <code
+                className="block overflow-x-auto rounded-lg bg-slate-100 p-3 text-[0.9em] text-slate-900"
+                {...props}
+              >
                 {children}
-              </table>
-            </div>
-          ),
-          thead: ({ children, ...props }) => (
-            <thead className="bg-slate-100" {...props}>
+              </code>
+            );
+          },
+          pre: ({ children, ...props }) => (
+            <pre className="my-3 overflow-x-auto" {...props}>
               {children}
-            </thead>
-          ),
-          th: ({ children, ...props }) => (
-            <th className="border border-slate-200 px-3 py-2 text-left font-semibold" {...props}>
-              {children}
-            </th>
-          ),
-          td: ({ children, ...props }) => (
-            <td className="border border-slate-200 px-3 py-2 align-top" {...props}>
-              {children}
-            </td>
+            </pre>
           ),
 
+          // ===== 区切り線 =====
           hr: (props) => <hr className="my-4 border-slate-200" {...props} />,
+
           strong: ({ children, ...props }) => (
             <strong className="font-semibold text-slate-900" {...props}>
               {children}
@@ -136,6 +120,45 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             <em className="italic text-slate-900" {...props}>
               {children}
             </em>
+          ),
+
+          // ===== ここから「表」まわり =====
+          table: ({ children, ...props }) => (
+            <div className="my-3 overflow-x-auto">
+              <table
+                className="min-w-full border-collapse border border-slate-300 text-sm"
+                {...props}
+              >
+                {children}
+              </table>
+            </div>
+          ),
+          thead: ({ children, ...props }) => (
+            <thead className="bg-slate-100" {...props}>
+              {children}
+            </thead>
+          ),
+          tbody: ({ children, ...props }) => <tbody {...props}>{children}</tbody>,
+          tr: ({ children, ...props }) => (
+            <tr className="even:bg-slate-50" {...props}>
+              {children}
+            </tr>
+          ),
+          th: ({ children, ...props }) => (
+            <th
+              className="border border-slate-300 px-3 py-1 text-left text-xs font-semibold text-slate-900"
+              {...props}
+            >
+              {children}
+            </th>
+          ),
+          td: ({ children, ...props }) => (
+            <td
+              className="border border-slate-300 px-3 py-1 align-top text-xs text-slate-900"
+              {...props}
+            >
+              {children}
+            </td>
           ),
         }}
       >
